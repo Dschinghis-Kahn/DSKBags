@@ -29,6 +29,9 @@ Registry.VirtualButton.Aquire = function(self)
 		if(texture) then
 			self.button:SetNormalTexture(select(1, GetContainerItemInfo(self:GetID(), self.button:GetID())));
 			self.button:GetNormalTexture():SetAllPoints();
+		else
+			self.button:SetNormalTexture("Interface\\BUTTONS\\UI-Slot-Background.blp");
+			self.button:GetNormalTexture():SetAllPoints();
 		end
 	end
 
@@ -36,6 +39,7 @@ Registry.VirtualButton.Aquire = function(self)
 end
 Registry.VirtualButton.Release = function(self, itemButton)
 	itemButton:Hide();
+	itemButton:AssignItem(nil, nil);
 end
 
 Registry.VirtualBag = {};
@@ -55,29 +59,47 @@ Registry.VirtualBag.Aquire = function(self)
 	frame:SetBackdropColor(0, 0, 0, 0.9);
 	frame:SetBackdropBorderColor(0.1, 0.1, 0.1, 1);
 
-	frame.items = {};
-	frame.itemAnchor = frame;
+	frame.buttonWidth = 4;
+	frame.borderWidth = 10;
+	frame.buttonSpacing = 5;
+	frame.buttons = {};
+
 	frame.AddItem = function(self, bagId, slotId)
-		local button = Registry.VirtualButton:Aquire();
+		local button = self:AddButton();
 		button:AssignItem(bagId, slotId);
 		button:Update();
-		self.items[bagId.."_"..slotId] = button;
-		if(self.itemAnchor == self) then
-			button:SetPoint("BOTTOMRIGHT", self.itemAnchor, "BOTTOMRIGHT", - 10, 10);
-		else
-			button:SetPoint("BOTTOMRIGHT", self.itemAnchor, "BOTTOMLEFT", - 5, 0);
-		end
-		self.itemAnchor = button;
 	end
 	frame.RemoveItem = function(self, bagId, slotId)
-		Registry.VirtualButton:Release(self.items[bagId.."_"..slotId]);
-		self.items[bagId.."_"..slotId] = nil;
 	end
+
+	frame.AddButton = function(self)
+		local button = Registry.VirtualButton:Aquire();
+		local id = 0;	for k, v in pairs(self.buttons) do id=id+1; end
+		self.buttons[id] = button;
+		if(id == 0) then
+			button:SetPoint("TOPLEFT", self, "TOPLEFT", self.borderWidth, -1 * self.borderWidth);
+		else
+			if(id % self.buttonWidth == 0) then
+				button:SetPoint("TOPLEFT", self.buttons[id-self.buttonWidth], "BOTTOMLEFT", 0, -1 * self.buttonSpacing);
+			else
+				button:SetPoint("TOPLEFT", self.buttons[id-1], "TOPRIGHT", self.buttonSpacing, 0);
+			end
+		end
+		return button;
+	end
+	frame.RemoveButton = function(self)
+		local id = table.getn(self.buttons)-1;
+		local button = self.buttons[id];
+		Registry.VirtualButton:Release(button);
+		self.buttons[id] = nil;
+	end
+
 	frame.Update = function(self)
-		for i, v in pairs(self.items) do
-			v:Update();
+		for id, button in pairs(self.buttons) do
+			button:Update();
 		end
 	end
+
 	return frame;
 end
 Registry.VirtualBag.Release = function(self)
